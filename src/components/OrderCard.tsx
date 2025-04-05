@@ -131,6 +131,11 @@ const OrderCard = () => {
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
 
+  // Form validation errors
+  const [addressError, setAddressError] = useState('');
+  const [zipCodeError, setZipCodeError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+
   // Item price
   const itemPrice = 599;
   const totalPrice = (itemPrice * quantity).toFixed(2);
@@ -140,6 +145,79 @@ const OrderCard = () => {
 
   // Allowed zip codes
   const allowedZipCodes = ['560038', '560075', '560017', '560093', '560008', '560071'];
+
+  // Validation functions
+  const validateAddress = (value: string): boolean => {
+    if (!value.trim()) {
+      setAddressError('Address is required');
+      return false;
+    }
+    
+    if (value.length > 499) {
+      setAddressError('Address must be less than 500 characters');
+      return false;
+    }
+    
+    setAddressError('');
+    return true;
+  };
+
+  const validateZipCode = (value: string): boolean => {
+    if (!value.trim()) {
+      setZipCodeError('Zip code is required');
+      return false;
+    }
+    
+    const zipRegex = /^\d{6}$/;
+    if (!zipRegex.test(value)) {
+      setZipCodeError('Zip code must be a 6-digit number');
+      return false;
+    }
+    
+    setZipCodeError('');
+    return true;
+  };
+
+  const validatePhone = (value: string): boolean => {
+    if (!value.trim()) {
+      setPhoneError('Phone number is required');
+      return false;
+    }
+    
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(value)) {
+      setPhoneError('Please enter a valid 10-digit Indian phone number');
+      return false;
+    }
+    
+    setPhoneError('');
+    return true;
+  };
+
+  // Handle input changes with validation
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAddress(value);
+    if (addressError) validateAddress(value);
+  };
+
+  const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow numeric input
+    if (value === '' || /^\d*$/.test(value)) {
+      setZipCode(value);
+      if (zipCodeError) validateZipCode(value);
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Only allow numeric input
+    if (value === '' || /^\d*$/.test(value)) {
+      setPhone(value);
+      if (phoneError) validatePhone(value);
+    }
+  };
 
   // Check if zip code is valid
   const isValidZipCode = (zipCode: string) => {
@@ -318,43 +396,22 @@ const OrderCard = () => {
 
   // Function to handle confirm address button click
   const handleConfirmAddressClick = () => {
-    // Validate required fields
-    if (!address) {
-      toast({
-        variant: "destructive",
-        title: "Address required",
-        description: "Please enter your delivery address.",
-        className: "bg-[#f9f4ee] border border-[#f9f4ee] text-gray-800",
-      });
+    // Reset all error states
+    setAddressError('');
+    setZipCodeError('');
+    setPhoneError('');
+    
+    // Validate all fields
+    const isAddressValid = validateAddress(address);
+    const isZipCodeValid = validateZipCode(zipCode);
+    const isPhoneValid = validatePhone(phone);
+    
+    // If any validation fails, stop the process
+    if (!isAddressValid || !isZipCodeValid || !isPhoneValid) {
       return;
     }
     
-    if (!phone) {
-      toast({
-        variant: "destructive",
-        title: "Phone number required",
-        description: "Please enter your phone number for delivery.",
-        className: "bg-[#f9f4ee] border border-[#f9f4ee] text-gray-800",
-      });
-      return;
-    }
-
-    if (!zipCode) {
-      toast({
-        variant: "destructive",
-        title: "Zip code required",
-        description: "Please enter your zip code for delivery.",
-        className: "bg-[#f9f4ee] border border-[#f9f4ee] text-gray-800",
-      });
-      return;
-    }
-
-    // Check if zipcode is in the allowed list
-    if (!isValidZipCode(zipCode)) {
-      setIsZipCodeErrorModalOpen(true);
-      return;
-    }
-    
+    // Check if location is confirmed
     if (!confirmedLocation) {
       toast({
         variant: "destructive",
@@ -365,8 +422,13 @@ const OrderCard = () => {
       return;
     }
     
-    // Open the confirmation modal
-    // setIsConfirmModalOpen(true);
+    // Check if zip code is in the allowed list - only at this point after validation
+    if (!isValidZipCode(zipCode)) {
+      setIsZipCodeErrorModalOpen(true);
+      return;
+    }
+    
+    // All validation passed, proceed with order
     proceedWithOrder();
   };
 
@@ -475,9 +537,13 @@ const OrderCard = () => {
                       id="address"
                       placeholder="Enter your street address" 
                       value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9"
+                      onChange={handleAddressChange}
+                      className={`border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9 ${addressError ? 'border-red-500' : ''}`}
+                      maxLength={499}
                     />
+                    {addressError && (
+                      <p className="text-red-500 text-xs mt-1 ml-3">{addressError}</p>
+                    )}
                   </div>
                   
                   <div className="flex gap-3">
@@ -486,9 +552,13 @@ const OrderCard = () => {
                         id="zipcode"
                         placeholder="Zip code" 
                         value={zipCode}
-                        onChange={(e) => setZipCode(e.target.value)}
-                        className="border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9"
+                        onChange={handleZipCodeChange}
+                        className={`border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9 ${zipCodeError ? 'border-red-500' : ''}`}
+                        maxLength={6}
                       />
+                      {zipCodeError && (
+                        <p className="text-red-500 text-xs mt-1 ml-3">{zipCodeError}</p>
+                      )}
                     </div>
                     
                     <div className="flex-1">
@@ -496,9 +566,13 @@ const OrderCard = () => {
                         id="phone"
                         placeholder="Enter your phone number" 
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9"
+                        onChange={handlePhoneChange}
+                        className={`border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9 ${phoneError ? 'border-red-500' : ''}`}
+                        maxLength={10}
                       />
+                      {phoneError && (
+                        <p className="text-red-500 text-xs mt-1 ml-3">{phoneError}</p>
+                      )}
                     </div>
                   </div>
                 </div>
