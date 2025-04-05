@@ -14,20 +14,24 @@ export default function Home() {
   useEffect(() => {
     const checkOpeningHours = () => {
       // Check if NEXT_PUBLIC_IS_CLOSED environment variable exists
-      const forceClose = process.env.NEXT_PUBLIC_IS_CLOSED != null;
-      
-      if (forceClose) {
-        setIsOpen(false);
-        return;
-      }
-      
+      let isClosed = false;
       // Get current time in IST
       const now = new Date();
       const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
       
       const hours = istTime.getHours();
       // Open from 11am to 11pm
-      setIsOpen(hours >= 11 && hours < 23);
+      isClosed = hours < 11 || hours > 23;
+
+      if (process.env.NEXT_PUBLIC_IS_CLOSED != null) {
+        isClosed = true;
+      }
+
+      if (process.env.NEXT_PUBLIC_IS_OPEN != null) {
+        isClosed = false;
+      }
+
+      setIsOpen(!isClosed);
     };
 
     checkOpeningHours();
