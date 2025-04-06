@@ -137,7 +137,7 @@ const OrderCard = () => {
   const [phoneError, setPhoneError] = useState('');
 
   // Item price
-  const itemPrice = 599;
+  const itemPrice = 399;
   const totalPrice = (itemPrice * quantity).toFixed(2);
   
   // Maximum quantity allowed
