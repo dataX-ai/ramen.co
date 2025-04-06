@@ -463,6 +463,10 @@ const OrderCard = () => {
     redirectUrl.searchParams.append('zipCode', zipCode);
     redirectUrl.searchParams.append('phone_number', phone);
     redirectUrl.searchParams.append('metadata_phone', phone);
+    redirectUrl.searchParams.append('metadata_map', `https://www.google.com/maps/?q=${confirmedLocation?.lat},${confirmedLocation?.lng}`);
+    redirectUrl.searchParams.append('metadata_address', address);
+    redirectUrl.searchParams.append('metadata_quantity', quantity.toString());
+    redirectUrl.searchParams.append('metadata_zipCode', zipCode);
     redirectUrl.searchParams.append('disableFullName', 'True');
     redirectUrl.searchParams.append('disableFirstName', 'True');
     redirectUrl.searchParams.append('disableLastName', 'True');

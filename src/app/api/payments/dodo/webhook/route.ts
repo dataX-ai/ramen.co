@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Webhook } from "standardwebhooks";
 import { dodoWebhookKey } from "@/lib/dodoLib";
 import * as brevo from '@getbrevo/brevo';
+import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { JWT } from 'google-auth-library';
 
 export async function POST(req: Request) {
   try {
@@ -30,6 +32,17 @@ export async function POST(req: Request) {
         console.log("Payment succeeded");
         console.log("paymentRecord", JSON.stringify(paymentData));
         
+        // Save data to Google Sheets
+        await saveToGoogleSheet({
+          paymentId: payment_id,
+          totalAmount: total_amount,
+          customerEmail: customer.email,
+          customerName: customer.name,
+          createdAt: created_at,
+          metadata: metadata || {},
+          paymentMethod: payment_method,
+        });
+        
         // Send receipt email
         await sendReceiptEmail({
           customerEmail: customer.email,
@@ -54,6 +67,97 @@ export async function POST(req: Request) {
       { error: "Webhook processing failed" },
       { status: 500 }
     );
+  }
+}
+
+// Google Sheets integration
+async function saveToGoogleSheet({
+  paymentId,
+  totalAmount,
+  customerEmail,
+  customerName,
+  createdAt,
+  metadata,
+  paymentMethod,
+}: {
+  paymentId: string;
+  totalAmount: number;
+  customerEmail: string;
+  customerName: string;
+  createdAt: string;
+  metadata: any;
+  paymentMethod: string;
+}) {
+  try {
+    // Environment variables
+    const GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
+    const GOOGLE_PRIVATE_KEY = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+    const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID || '';
+
+    if (!GOOGLE_SERVICE_ACCOUNT_EMAIL || !GOOGLE_PRIVATE_KEY || !GOOGLE_SHEET_ID) {
+      throw new Error('Missing Google Sheets credentials');
+    }
+
+    // Initialize auth with JWT
+    const serviceAccountAuth = new JWT({
+      email: GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      key: GOOGLE_PRIVATE_KEY,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    // Initialize the sheet
+    const doc = new GoogleSpreadsheet(GOOGLE_SHEET_ID, serviceAccountAuth);
+    await doc.loadInfo();
+
+    // Get the sheet by title "Orders" instead of using the first sheet
+    const sheet = doc.sheetsByTitle["Orders"];
+    if (!sheet) {
+      throw new Error('Sheet named "Orders" not found');
+    }
+    
+    // Format the date
+    const orderDate = new Date(createdAt).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Format amount
+    const formattedAmount = (totalAmount / 100).toLocaleString('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).replace('₹', '').trim();
+
+    // Extract address information from metadata
+    const address = metadata.address || 'N/A';
+    const phone = metadata.phone || 'N/A';
+    const zipcode = metadata.zipCode || 'N/A';
+    const quantity = metadata.quantity || 1;
+    const mapLink = metadata.map || 'N/A';
+    
+    // Add a new row with all the payment details
+    await sheet.addRow({
+      PaymentID: paymentId,
+      OrderDate: orderDate,
+      CustomerName: customerName,
+      CustomerEmail: customerEmail,
+      Phone: phone,
+      Address: address,
+      Zipcode: zipcode,
+      Product: 'Tori Paitan Ramen | Non-Veg',
+      Quantity: quantity,
+      Amount: formattedAmount,
+      PaymentMethod: paymentMethod,
+      MapLink: mapLink
+    });
+
+    console.log('Payment data saved to Google Sheet successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to save to Google Sheet:', error);
+    return false;
   }
 }
 
