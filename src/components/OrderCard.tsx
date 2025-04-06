@@ -454,7 +454,7 @@ const OrderCard = () => {
     
     // Add query parameters
     redirectUrl.searchParams.append('quantity', quantity.toString());
-    redirectUrl.searchParams.append('redirect_url', `${baseUrl}`);
+    redirectUrl.searchParams.append('redirect_url', `${baseUrl}/confirmed`);
     redirectUrl.searchParams.append('fullName', 'Ramen Guy');
     redirectUrl.searchParams.append('country', 'IN');
     redirectUrl.searchParams.append('city', 'Bangalore');
