@@ -16,6 +16,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { VisuallyHidden } from "@/components/ui/visually-hidden";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import "./shimmer.css"; // We'll create this file separately
 
 // You should replace this with your actual Google Maps API key
@@ -125,6 +132,7 @@ const OrderCard = () => {
   const [searchResults, setSearchResults] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [ramenType, setRamenType] = useState('non-veg'); // Default to non-veg
   const { toast } = useToast();
   const mapRef = useRef<google.maps.Map | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -136,8 +144,10 @@ const OrderCard = () => {
   const [zipCodeError, setZipCodeError] = useState('');
   const [phoneError, setPhoneError] = useState('');
 
-  // Item price
-  const itemPrice = 599;
+  // Item price based on ramen type
+  const vegPrice = 499;
+  const nonVegPrice = 599;
+  const itemPrice = ramenType === 'veg' ? vegPrice : nonVegPrice;
   const totalPrice = (itemPrice * quantity).toFixed(2);
   
   // Maximum quantity allowed
@@ -432,6 +442,11 @@ const OrderCard = () => {
     proceedWithOrder();
   };
 
+  // Handle ramen type change
+  const handleRamenTypeChange = (value: string) => {
+    setRamenType(value);
+  };
+
   // Function to proceed with the order
   const proceedWithOrder = () => {
     // Close the modal
@@ -450,7 +465,7 @@ const OrderCard = () => {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
     
     // Build the redirect URL with parameters
-    const redirectUrl = new URL(`${paymentBaseUrl}/${productId}`);
+    const redirectUrl = new URL(`${paymentBaseUrl}`);
     
     // Add query parameters
     redirectUrl.searchParams.append('quantity', quantity.toString());
@@ -467,6 +482,7 @@ const OrderCard = () => {
     redirectUrl.searchParams.append('metadata_address', address);
     redirectUrl.searchParams.append('metadata_quantity', quantity.toString());
     redirectUrl.searchParams.append('metadata_zipCode', zipCode);
+    redirectUrl.searchParams.append('metadata_ramenType', ramenType);
     redirectUrl.searchParams.append('disableFullName', 'True');
     redirectUrl.searchParams.append('disableFirstName', 'True');
     redirectUrl.searchParams.append('disableLastName', 'True');
@@ -501,8 +517,8 @@ const OrderCard = () => {
           </div>
           
           <div className="pt-3 space-y-4">
-            <div className="flex items-center justify-center">
-              <div className="flex items-center">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center justify-center">
                 <button 
                   className="h-8 w-8 flex items-center justify-center rounded-full bg-[#385e67] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
                   onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
@@ -513,7 +529,7 @@ const OrderCard = () => {
                 </button>
                 
                 <div className="mx-3 px-5 py-1.5 bg-[#fffdfa] rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] text-center flex items-center justify-between min-w-[170px] border border-[#f0eae4]">
-                  <span className="text-gray-700 font-medium">{quantity} × Tori Paitan Ramen</span>
+                  <span className="text-gray-700 font-medium">{quantity} × {ramenType === 'veg' ? 'Veg' : 'Non-veg'} Ramen</span>
                   <span className="text-sm text-gray-500 ml-2">₹{itemPrice}</span>
                 </div>
                 
@@ -525,6 +541,18 @@ const OrderCard = () => {
                 >
                   +
                 </button>
+              </div>
+              
+              <div className="flex justify-center sm:justify-start sm:ml-2">
+                <Select value={ramenType} onValueChange={handleRamenTypeChange}>
+                  <SelectTrigger className="h-9 w-36 sm:w-32 rounded-full border-gray-300 bg-[#fffdfa] text-[#673f34] focus:ring-[#2D5151] focus:border-[#2D5151]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#fffdfa] text-[#673f34] rounded-lg border-gray-300">
+                    <SelectItem value="veg" className="focus:bg-[#e7f0e4] focus:text-[#2D5151]">Veg (₹499)</SelectItem>
+                    <SelectItem value="non-veg" className="focus:bg-[#e7f0e4] focus:text-[#2D5151]">Non-veg (₹599)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             
@@ -802,7 +830,9 @@ const OrderCard = () => {
                     />
                   </div>
                   <div>
-                    <span className="text-[#673f34] font-medium">Tori Paitan Ramen</span>
+                    <span className="text-[#673f34] font-medium">
+                      {ramenType === 'veg' ? 'Veg' : 'Non-veg'} Tori Paitan Ramen
+                    </span>
                     <div className="flex items-center mt-1">
                       <div className="w-6 h-6 bg-[#709b66] rounded-full flex items-center justify-center">
                         <span className="text-white font-bold text-xs">{quantity}</span>
