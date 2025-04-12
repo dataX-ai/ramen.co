@@ -42,9 +42,9 @@ const RamenProductCard: React.FC<RamenProductCardProps> = ({ onOrderNow }) => {
         protein: "50–55g",
       },
       images: [
-        "/images/ramen_og_circle.webp",
         "/images/chicken_ramen_2.jpg",
-        "/images/chicken_ramen_3.jpg"
+        "/images/chicken_ramen_3.jpg",
+        "/images/ramen_og_circle.webp"
       ],
       isVeg: false
     },
