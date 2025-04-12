@@ -134,21 +134,23 @@ async function saveToGoogleSheet({
     const address = metadata.address || 'N/A';
     const phone = metadata.phone || 'N/A';
     const zipcode = metadata.zipCode || 'N/A';
-    const quantity = metadata.quantity || 1;
+    const nonVegQuantity = parseInt(metadata.nonVegQuantity) || 0;
+    const vegQuantity = parseInt(metadata.vegQuantity) || 0;
     const mapLink = metadata.map || 'N/A';
+    const email = metadata.email || customerEmail;
     
-    // Add a new row with all the payment details
+    // Add a single row with both product quantities
     await sheet.addRow({
       PaymentID: paymentId,
       OrderDate: orderDate,
       CustomerName: customerName,
-      CustomerEmail: customerEmail,
+      CustomerEmail: email,
       Phone: phone,
       Address: address,
       Zipcode: zipcode,
-      Product: 'Tori Paitan Ramen | Non-Veg',
-      Quantity: quantity,
-      Amount: formattedAmount,
+      NonVegQuantity: nonVegQuantity,
+      VegQuantity: vegQuantity,
+      TotalAmount: formattedAmount,
       PaymentMethod: paymentMethod,
       MapLink: mapLink
     });
@@ -191,8 +193,47 @@ async function sendReceiptEmail({ customerEmail, totalAmount, paymentId, created
     // Prepare address information
     const address = metadata.address || 'N/A';
     const phone = metadata.phone || 'N/A';
-    const zipcode = metadata.zipcode || 'N/A';
-    const quantity = metadata.quantity || 1;
+    const zipcode = metadata.zipCode || 'N/A';
+    const nonVegQuantity = parseInt(metadata.nonVegQuantity) || 0;
+    const vegQuantity = parseInt(metadata.vegQuantity) || 0;
+    const email = metadata.email || customerEmail;
+
+    // Create order details HTML based on quantities
+    let orderDetailsHTML = '';
+    
+    // Add non-veg item if quantity > 0
+    if (nonVegQuantity > 0) {
+      const nonVegSubtotal = (nonVegQuantity * 599).toLocaleString('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+      });
+      
+      orderDetailsHTML += `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73;">Tori Paitan Ramen | Non-Veg</td>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73; text-align: center;">${nonVegQuantity}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73; text-align: right;">₹599</td>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73; text-align: right;">${nonVegSubtotal}</td>
+        </tr>
+      `;
+    }
+    
+    // Add veg item if quantity > 0
+    if (vegQuantity > 0) {
+      const vegSubtotal = (vegQuantity * 499).toLocaleString('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+      });
+      
+      orderDetailsHTML += `
+        <tr>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73;">Veg Miso Ramen | Veg</td>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73; text-align: center;">${vegQuantity}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73; text-align: right;">₹499</td>
+          <td style="padding: 8px; border-bottom: 1px solid #c86d73; text-align: right;">${vegSubtotal}</td>
+        </tr>
+      `;
+    }
 
     // Create the HTML content for the email
     const htmlContent = `
@@ -206,14 +247,31 @@ async function sendReceiptEmail({ customerEmail, totalAmount, paymentId, created
           <h2 style="color: #654117; margin-top: 0; border-bottom: 2px solid #c86d73; padding-bottom: 10px;">Order Details</h2>
           <p style="color: #385e67;"><strong style="color: #654117;">Order ID:</strong> ${paymentId}</p>
           <p style="color: #385e67;"><strong style="color: #654117;">Date:</strong> ${orderDate}</p>
-          <p style="color: #385e67;"><strong style="color: #654117;">Product:</strong> Tori Paitan Ramen | Non-Veg</p>
-          <p style="color: #385e67;"><strong style="color: #654117;">Quantity:</strong> ${quantity}</p>
-          <p style="color: #385e67;"><strong style="color: #654117;">Total Amount:</strong> ${formattedAmount}</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px;">
+            <thead>
+              <tr style="background-color: #c86d73; color: white;">
+                <th style="padding: 8px; text-align: left;">Item</th>
+                <th style="padding: 8px; text-align: center;">Qty</th>
+                <th style="padding: 8px; text-align: right;">Price</th>
+                <th style="padding: 8px; text-align: right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orderDetailsHTML}
+            </tbody>
+            <tfoot>
+              <tr style="font-weight: bold; background-color: #385e67; color: white;">
+                <td style="padding: 8px;" colspan="3">Total</td>
+                <td style="padding: 8px; text-align: right;">${formattedAmount}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
         
         <div style="margin-bottom: 30px; padding: 20px; background-color: #e9d1c2; border-radius: 8px;">
           <h2 style="color: #654117; margin-top: 0; border-bottom: 2px solid #c86d73; padding-bottom: 10px;">Delivery Information</h2>
-          <p style="color: #385e67;"><strong style="color: #654117;">Email:</strong> ${customerEmail}</p>
+          <p style="color: #385e67;"><strong style="color: #654117;">Email:</strong> ${email}</p>
           <p style="color: #385e67;"><strong style="color: #654117;">Address:</strong> ${address}</p>
           <p style="color: #385e67;"><strong style="color: #654117;">Phone:</strong> ${phone}</p>
           <p style="color: #385e67;"><strong style="color: #654117;">Zipcode:</strong> ${zipcode}</p>

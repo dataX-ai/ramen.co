@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { Tag, MapPin, Maximize2, Navigation, Search, Check } from 'lucide-react';
+import { Tag, MapPin, Maximize2, Navigation, Search, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
@@ -122,6 +122,7 @@ const OrderCard = () => {
   const [address, setAddress] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(defaultCenter);
   const [confirmedLocation, setConfirmedLocation] = useState<{lat: number, lng: number} | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -131,8 +132,10 @@ const OrderCard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [quantity, setQuantity] = useState(1);
-  const [ramenType, setRamenType] = useState('non-veg'); // Default to non-veg
+  const [nonVegQuantity, setNonVegQuantity] = useState(1);
+  const [vegQuantity, setVegQuantity] = useState(0);
+  const [quantityError, setQuantityError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const mapRef = useRef<google.maps.Map | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -143,12 +146,12 @@ const OrderCard = () => {
   const [addressError, setAddressError] = useState('');
   const [zipCodeError, setZipCodeError] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
-  // Item price based on ramen type
-  const vegPrice = 499;
-  const nonVegPrice = 599;
-  const itemPrice = ramenType === 'veg' ? vegPrice : nonVegPrice;
-  const totalPrice = (itemPrice * quantity).toFixed(2);
+  // Item prices
+  const nonVegItemPrice = 599;
+  const vegItemPrice = 499;
+  const totalPrice = (nonVegItemPrice * nonVegQuantity + vegItemPrice * vegQuantity).toFixed(2);
   
   // Maximum quantity allowed
   const MAX_QUANTITY = 6;
@@ -204,6 +207,22 @@ const OrderCard = () => {
     return true;
   };
 
+  const validateEmail = (value: string): boolean => {
+    if (!value.trim()) {
+      setEmailError('Email is required');
+      return false;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) {
+      setEmailError('Please enter a valid email address');
+      return false;
+    }
+    
+    setEmailError('');
+    return true;
+  };
+
   // Handle input changes with validation
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -227,6 +246,12 @@ const OrderCard = () => {
       setPhone(value);
       if (phoneError) validatePhone(value);
     }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (emailError) validateEmail(value);
   };
 
   // Check if zip code is valid
@@ -410,14 +435,23 @@ const OrderCard = () => {
     setAddressError('');
     setZipCodeError('');
     setPhoneError('');
+    setEmailError('');
+    setQuantityError('');
     
     // Validate all fields
     const isAddressValid = validateAddress(address);
     const isZipCodeValid = validateZipCode(zipCode);
     const isPhoneValid = validatePhone(phone);
+    const isEmailValid = validateEmail(email);
+    
+    // Validate that at least one item is selected
+    if (nonVegQuantity + vegQuantity <= 0) {
+      setQuantityError('Please select at least one item');
+      return;
+    }
     
     // If any validation fails, stop the process
-    if (!isAddressValid || !isZipCodeValid || !isPhoneValid) {
+    if (!isAddressValid || !isZipCodeValid || !isPhoneValid || !isEmailValid) {
       return;
     }
     
@@ -442,58 +476,54 @@ const OrderCard = () => {
     proceedWithOrder();
   };
 
-  // Handle ramen type change
-  const handleRamenTypeChange = (value: string) => {
-    setRamenType(value);
-  };
-
   // Function to proceed with the order
-  const proceedWithOrder = () => {
+  const proceedWithOrder = async () => {
     // Close the modal
     setIsConfirmModalOpen(false);
     
-    // Show success toast
-    toast({
-      title: "Redirecting to payment",
-      description: "Please complete your payment to confirm your order.",
-      className: "bg-[#f9f4ee] border border-[#f9f4ee] text-gray-800",
-    });
+    // Show loading toast and set loading state
+    setIsLoading(true);
     
-    // Get the payment URL from environment variable
-    const paymentBaseUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://checkout.dodopayments.com/buy";
-    const productId = process.env.NEXT_PUBLIC_PRODUCT_ID || "";
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+    // Create form data for API call
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('zipCode', zipCode);
+    formData.append('phone', phone);
+    formData.append('mapUrl', `https://www.google.com/maps/?q=${confirmedLocation?.lat},${confirmedLocation?.lng}`);
+    formData.append('address', address);
+    formData.append('nonVegQuantity', nonVegQuantity.toString());
+    formData.append('vegQuantity', vegQuantity.toString());
+    formData.append('countryCode', 'IN');
     
-    // Build the redirect URL with parameters
-    const redirectUrl = new URL(`${paymentBaseUrl}`);
-    
-    // Add query parameters
-    redirectUrl.searchParams.append('quantity', quantity.toString());
-    redirectUrl.searchParams.append('redirect_url', `${baseUrl}/confirmed`);
-    redirectUrl.searchParams.append('fullName', 'Ramen Guy');
-    redirectUrl.searchParams.append('country', 'IN');
-    redirectUrl.searchParams.append('city', 'Bangalore');
-    redirectUrl.searchParams.append('addressLine', address);
-    redirectUrl.searchParams.append('state', 'KA');
-    redirectUrl.searchParams.append('zipCode', zipCode);
-    redirectUrl.searchParams.append('phone_number', phone);
-    redirectUrl.searchParams.append('metadata_phone', phone);
-    redirectUrl.searchParams.append('metadata_map', `https://www.google.com/maps/?q=${confirmedLocation?.lat},${confirmedLocation?.lng}`);
-    redirectUrl.searchParams.append('metadata_address', address);
-    redirectUrl.searchParams.append('metadata_quantity', quantity.toString());
-    redirectUrl.searchParams.append('metadata_zipCode', zipCode);
-    redirectUrl.searchParams.append('metadata_ramenType', ramenType);
-    redirectUrl.searchParams.append('disableFullName', 'True');
-    redirectUrl.searchParams.append('disableFirstName', 'True');
-    redirectUrl.searchParams.append('disableLastName', 'True');
-    redirectUrl.searchParams.append('disableCountry', 'True');
-    redirectUrl.searchParams.append('disableAddressLine', 'True');
-    redirectUrl.searchParams.append('disableCity', 'True');
-    redirectUrl.searchParams.append('disableState', 'True');
-    redirectUrl.searchParams.append('disableZipCode', 'True');
-    
-    // Redirect to payment page
-    window.location.href = redirectUrl.toString();
+    // Make API call to our payments endpoint
+    try {
+      const response = await fetch('/api/payments/dodo', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Payment request failed');
+      }
+      
+      const data = await response.json();
+      
+      // Redirect to the payment link
+      if (data.paymentLink) {
+        window.location.href = data.paymentLink;
+      } else {
+        throw new Error('Payment link not received');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({
+        variant: "destructive",
+        title: "Payment error",
+        description: "There was a problem processing your payment. Please try again.",
+        className: "bg-[#f9f4ee] border border-[#f9f4ee] text-gray-800",
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -517,44 +547,62 @@ const OrderCard = () => {
           </div>
           
           <div className="pt-3 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <div className="flex items-center justify-center">
-                <button 
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-[#385e67] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
-                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                  disabled={quantity <= 1}
-                  aria-label="Decrease quantity"
-                >
-                  -
-                </button>
-                
-                <div className="mx-3 px-5 py-1.5 bg-[#fffdfa] rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] text-center flex items-center justify-between min-w-[170px] border border-[#f0eae4]">
-                  <span className="text-gray-700 font-medium">{quantity} × {ramenType === 'veg' ? 'Veg' : 'Non-veg'} Ramen</span>
-                  <span className="text-sm text-gray-500 ml-2">₹{itemPrice}</span>
-                </div>
-                
-                <button 
-                  className="h-8 w-8 flex items-center justify-center rounded-full bg-[#385e67] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
-                  onClick={() => setQuantity(prev => Math.min(MAX_QUANTITY, prev + 1))}
-                  disabled={quantity >= MAX_QUANTITY}
-                  aria-label="Increase quantity"
-                >
-                  +
-                </button>
+            {/* Non-Veg Option */}
+            <div className="flex items-center justify-center gap-3">
+              <button 
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-[#385e67] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
+                onClick={() => setNonVegQuantity(prev => Math.max(0, prev - 1))}
+                disabled={nonVegQuantity <= 0}
+                aria-label="Decrease non-veg quantity"
+              >
+                -
+              </button>
+              
+              <div className="mx-3 px-5 py-1.5 bg-[#fffdfa] rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] text-center flex items-center justify-between min-w-[170px] border border-[#f0eae4]">
+                <span className="text-gray-700 font-medium">{nonVegQuantity} × Tori Paitan Ramen</span>
+                <span className="text-sm text-gray-500 ml-2">₹{nonVegItemPrice}</span>
               </div>
               
-              <div className="flex justify-center sm:justify-start sm:ml-2">
-                <Select value={ramenType} onValueChange={handleRamenTypeChange}>
-                  <SelectTrigger className="h-9 w-36 sm:w-32 rounded-full border-gray-300 bg-[#fffdfa] text-[#673f34] focus:ring-[#2D5151] focus:border-[#2D5151]">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#fffdfa] text-[#673f34] rounded-lg border-gray-300">
-                    <SelectItem value="veg" className="focus:bg-[#e7f0e4] focus:text-[#2D5151]">Veg (₹499)</SelectItem>
-                    <SelectItem value="non-veg" className="focus:bg-[#e7f0e4] focus:text-[#2D5151]">Non-veg (₹599)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <button 
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-[#385e67] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
+                onClick={() => setNonVegQuantity(prev => Math.min(MAX_QUANTITY, prev + 1))}
+                disabled={nonVegQuantity >= MAX_QUANTITY}
+                aria-label="Increase non-veg quantity"
+              >
+                +
+              </button>
             </div>
+            
+            {/* Veg Option */}
+            <div className="flex items-center justify-center gap-3">
+              <button 
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-[#729d68] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
+                onClick={() => setVegQuantity(prev => Math.max(0, prev - 1))}
+                disabled={vegQuantity <= 0}
+                aria-label="Decrease veg quantity"
+              >
+                -
+              </button>
+              
+              <div className="mx-3 px-5 py-1.5 bg-[#fffdfa] rounded-full shadow-[inset_0_1px_3px_rgba(0,0,0,0.1)] text-center flex items-center justify-between min-w-[170px] border border-[#f0eae4]">
+                <span className="text-gray-700 font-medium">{vegQuantity} × Veg Miso Ramen</span>
+                <span className="text-sm text-gray-500 ml-2">₹{vegItemPrice}</span>
+              </div>
+              
+              <button 
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-[#729d68] text-white hover:opacity-90 disabled:opacity-50 font-medium text-lg shadow-md"
+                onClick={() => setVegQuantity(prev => Math.min(MAX_QUANTITY, prev + 1))}
+                disabled={vegQuantity >= MAX_QUANTITY}
+                aria-label="Increase veg quantity"
+              >
+                +
+              </button>
+            </div>
+            
+            {/* Quantity error message */}
+            {quantityError && (
+              <p className="text-red-500 text-sm text-center">{quantityError}</p>
+            )}
             
             <div className="border-t border-gray-200 pt-3">
               <div className="space-y-2">
@@ -606,6 +654,20 @@ const OrderCard = () => {
                         <p className="text-red-500 text-xs mt-1 ml-3">{phoneError}</p>
                       )}
                     </div>
+                  </div>
+                  
+                  <div>
+                    <Input 
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email address" 
+                      value={email}
+                      onChange={handleEmailChange}
+                      className={`border-gray-300 focus:border-[#2D5151] focus:ring-[#2D5151] rounded-full bg-[#fffdfa] placeholder:text-[#ab8871] text-[#673f34] h-9 ${emailError ? 'border-red-500' : ''}`}
+                    />
+                    {emailError && (
+                      <p className="text-red-500 text-xs mt-1 ml-3">{emailError}</p>
+                    )}
                   </div>
                 </div>
                 
@@ -815,33 +877,72 @@ const OrderCard = () => {
                   <p className="text-[#673f34] text-sm font-medium">Phone:</p>
                   <p className="text-[#673f34] text-sm">{phone}</p>
                 </div>
+                <div>
+                  <p className="text-[#673f34] text-sm font-medium">Email:</p>
+                  <p className="text-[#673f34] text-sm">{email}</p>
+                </div>
               </div>
             </div>
             
             <div className="bg-white rounded-lg p-4 shadow-inner border border-[#e9d1c2]">
               <h3 className="font-bold text-[#2D5151] mb-2">Order Summary</h3>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#e9d1c2] shadow-md">
-                    <img 
-                      src="/images/ramen_og_circle.png" 
-                      alt="Ramen bowl"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[#673f34] font-medium">
-                      {ramenType === 'veg' ? 'Veg' : 'Non-veg'} Tori Paitan Ramen
-                    </span>
-                    <div className="flex items-center mt-1">
-                      <div className="w-6 h-6 bg-[#709b66] rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold text-xs">{quantity}</span>
+              <div className="flex flex-col space-y-3">
+                {nonVegQuantity > 0 && (
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#e9d1c2] shadow-md">
+                        <img 
+                          src="/images/ramen_og_circle.png" 
+                          alt="Non-veg Ramen bowl"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <span className="text-[#673f34] text-sm ml-2">× ₹{itemPrice}</span>
+                      <div>
+                        <span className="text-[#673f34] font-medium">
+                          Tori Paitan Ramen
+                        </span>
+                        <div className="flex items-center mt-1">
+                          <div className="w-6 h-6 bg-[#709b66] rounded-full flex items-center justify-center">
+                            <span className="text-white font-bold text-xs">{nonVegQuantity}</span>
+                          </div>
+                          <span className="text-[#673f34] text-sm ml-2">× ₹{nonVegItemPrice}</span>
+                        </div>
+                      </div>
                     </div>
+                    <span className="font-bold text-[#2D5151]">₹{(nonVegItemPrice * nonVegQuantity).toFixed(2)}</span>
                   </div>
+                )}
+                
+                {vegQuantity > 0 && (
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-[#e9d1c2] shadow-md">
+                        <img 
+                          src="/images/veg_ramen_circle.png" 
+                          alt="Veg Ramen bowl"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[#673f34] font-medium">
+                          Veg Miso Ramen
+                        </span>
+                        <div className="flex items-center mt-1">
+                          <div className="w-6 h-6 bg-[#729d68] rounded-full flex items-center justify-center">
+                            <span className="text-white font-bold text-xs">{vegQuantity}</span>
+                          </div>
+                          <span className="text-[#673f34] text-sm ml-2">× ₹{vegItemPrice}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="font-bold text-[#2D5151]">₹{(vegItemPrice * vegQuantity).toFixed(2)}</span>
+                  </div>
+                )}
+                
+                <div className="border-t border-gray-200 pt-2 flex justify-between">
+                  <span className="font-medium text-[#2D5151]">Total</span>
+                  <span className="font-bold text-[#2D5151]">₹{totalPrice}</span>
                 </div>
-                <span className="font-bold text-[#2D5151]">₹{totalPrice}</span>
               </div>
             </div>
           </div>
@@ -857,9 +958,16 @@ const OrderCard = () => {
             <Button 
               className="bg-[#D57A83] hover:bg-[#c06a73] text-white rounded-full flex items-center gap-2"
               onClick={proceedWithOrder}
+              disabled={isLoading}
             >
-              <Check size={16} />
-              Proceed to Payment
+              {isLoading ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <>
+                  <Check size={16} />
+                  Proceed to Payment
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

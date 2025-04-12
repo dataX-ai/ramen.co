@@ -9,3 +9,7 @@ export const dodopayments = new DodoPayments({
 });
 
 export const dodoWebhookKey = process.env.ENV === "development" ? process.env.DODO_TEST_PAYMENTS_WEBHOOK_KEY : process.env.DODO_LIVE_PAYMENTS_WEBHOOK_KEY;
+
+export const dodoNonVegProductId = process.env.ENV === "development" ? process.env.DODO_TEST_NON_VEG_PRODUCT_ID : process.env.DODO_LIVE_NON_VEG_PRODUCT_ID;
+
+export const dodoVegProductId = process.env.ENV === "development" ? process.env.DODO_TEST_VEG_PRODUCT_ID : process.env.DODO_LIVE_VEG_PRODUCT_ID;
