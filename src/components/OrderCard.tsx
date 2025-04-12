@@ -132,7 +132,7 @@ const OrderCard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const [showResults, setShowResults] = useState(false);
-  const [nonVegQuantity, setNonVegQuantity] = useState(1);
+  const [nonVegQuantity, setNonVegQuantity] = useState(0);
   const [vegQuantity, setVegQuantity] = useState(0);
   const [quantityError, setQuantityError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -158,6 +158,11 @@ const OrderCard = () => {
 
   // Allowed zip codes
   const allowedZipCodes = ['560038', '560075', '560017', '560093', '560008', '560071'];
+
+  // Initialize nonVegQuantity to 1 on component mount
+  useEffect(() => {
+    setNonVegQuantity(1);
+  }, []);
 
   // Validation functions
   const validateAddress = (value: string): boolean => {
@@ -444,7 +449,7 @@ const OrderCard = () => {
     const isPhoneValid = validatePhone(phone);
     const isEmailValid = validateEmail(email);
     
-    // Validate that at least one item is selected
+    // Ensure we have at least one item selected
     if (nonVegQuantity + vegQuantity <= 0) {
       setQuantityError('Please select at least one item');
       return;
