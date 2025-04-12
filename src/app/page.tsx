@@ -5,6 +5,8 @@ import OrderCard from '@/components/OrderCard';
 import RamenProductCard from '@/components/RamenProductCard';
 import PromoCard from '@/components/PromoCard';
 import { Toaster } from "@/components/ui/toaster";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 export default function Home() {
   // Empty function for the onOrderNow prop - no action needed now
@@ -49,6 +51,8 @@ export default function Home() {
         overflow: 'hidden'
       }}
     >
+      
+
       {/* Background image as absolute positioned div */}
       <div 
         className="absolute inset-0 z-0"
