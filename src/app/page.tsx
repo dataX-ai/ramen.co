@@ -22,8 +22,8 @@ export default function Home() {
       const istTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
       
       const hours = istTime.getHours();
-      // Open from 11am to 11pm
-      isClosed = hours < 11 || hours > 23;
+      // Open from 11am to 1am the next day
+      isClosed = !(hours >= 11 || hours <= 1);
 
       if (process.env.NEXT_PUBLIC_IS_CLOSED != null) {
         isClosed = true;
@@ -96,7 +96,7 @@ export default function Home() {
         <div className="max-w-md w-full bg-white/20 backdrop-blur-lg rounded-lg p-8 text-center shadow-lg relative z-20 border border-white/30">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">We are closed now!</h2>
           <p className="text-gray-700 mb-2">Our hours of operation are:</p>
-          <p className="text-gray-700 font-medium mb-6">11:00 AM - 11:00 PM IST</p>
+          <p className="text-gray-700 font-medium mb-6">11:00 AM - 1:00 AM IST</p>
           <p className="text-gray-700">Thank you for visiting!</p>
         </div>
       )}
