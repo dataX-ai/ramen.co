@@ -299,9 +299,7 @@ const OrderCard = () => {
       autocompleteService.current.getPlacePredictions(
         {
           input: value,
-          locationBias: locationBias,
-          // We can also add bounds to restrict to the current map view
-          locationRestriction: mapRef.current.getBounds() || undefined
+          locationBias: locationBias
         },
         (predictions, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
