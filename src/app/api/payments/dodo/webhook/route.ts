@@ -51,6 +51,17 @@ export async function POST(req: Request) {
           createdAt: created_at,
           metadata: metadata || {},
         });
+        
+        // Send Slack notification
+        await sendSlackNotification({
+          paymentId: payment_id,
+          totalAmount: total_amount,
+          customerName: customer.name,
+          customerEmail: customer.email,
+          createdAt: created_at,
+          metadata: metadata || {},
+          paymentMethod: payment_method,
+        });
       }
 
       return NextResponse.json({ status: "ok" });
@@ -320,6 +331,182 @@ async function sendReceiptEmail({ customerEmail, totalAmount, paymentId, created
     return true;
   } catch (error) {
     console.error("Failed to send receipt email:", error);
+    return false;
+  }
+}
+
+/**
+ * Sends a notification to Slack when a new order is received
+ */
+async function sendSlackNotification({
+  paymentId,
+  totalAmount,
+  customerName,
+  customerEmail,
+  createdAt,
+  metadata,
+  paymentMethod,
+}: {
+  paymentId: string;
+  totalAmount: number;
+  customerName: string;
+  customerEmail: string;
+  createdAt: string;
+  metadata: any;
+  paymentMethod: string;
+}) {
+  try {
+    const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+    
+    if (!SLACK_WEBHOOK_URL) {
+      console.warn('SLACK_WEBHOOK_URL not configured, skipping Slack notification');
+      return false;
+    }
+
+    // Format the date
+    const orderDate = new Date(createdAt).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // Format amount
+    const formattedAmount = (totalAmount / 100).toLocaleString('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    });
+
+    // Extract order information from metadata
+    const address = metadata.address || 'N/A';
+    const phone = metadata.phone || 'N/A';
+    const zipcode = metadata.zipCode || 'N/A';
+    const nonVegQuantity = parseInt(metadata.nonVegQuantity) || 0;
+    const vegQuantity = parseInt(metadata.vegQuantity) || 0;
+    const email = metadata.email || customerEmail;
+    
+    // Create order details for Slack
+    const orderDetails = [];
+    if (nonVegQuantity > 0) {
+      orderDetails.push(`${nonVegQuantity}x Tori Paitan Ramen (Non-Veg) - ₹${(nonVegQuantity * 599).toLocaleString('en-IN')}`);
+    }
+    if (vegQuantity > 0) {
+      orderDetails.push(`${vegQuantity}x Veg Miso Ramen - ₹${(vegQuantity * 499).toLocaleString('en-IN')}`);
+    }
+
+    // Build Slack message
+    const slackMessage = {
+      blocks: [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: "🍜 New Ramen Order Received! 🍜",
+            emoji: true
+          }
+        },
+        {
+          type: "divider"
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Order ID:*\n${paymentId}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Date:*\n${orderDate}`
+            }
+          ]
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Customer:*\n${customerName}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Total:*\n${formattedAmount}`
+            }
+          ]
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Email:*\n${email}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Phone:*\n${phone}`
+            }
+          ]
+        },
+        {
+          type: "section",
+          fields: [
+            {
+              type: "mrkdwn",
+              text: `*Address:*\n${address}`
+            },
+            {
+              type: "mrkdwn",
+              text: `*Zipcode:*\n${zipcode}`
+            }
+          ]
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Order Items:*\n${orderDetails.join('\n')}`
+          }
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Payment Method:*\n${paymentMethod}`
+          }
+        },
+        {
+          type: "divider"
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: "Please prepare this order for delivery within 50 minutes."
+            }
+          ]
+        }
+      ]
+    };
+
+    // Send notification to Slack
+    const response = await fetch(SLACK_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(slackMessage),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Slack notification failed: ${response.statusText}`);
+    }
+
+    console.log('Slack notification sent successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to send Slack notification:', error);
     return false;
   }
 }
