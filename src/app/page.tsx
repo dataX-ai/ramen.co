@@ -23,7 +23,7 @@ export default function Home() {
       
       const hours = istTime.getHours();
       // Open from 11am to 1am the next day
-      isClosed = !(hours >= 11 || hours <= 1);
+      isClosed = !(hours >= 11 || hours < 1);
 
       if (process.env.NEXT_PUBLIC_IS_CLOSED != null) {
         isClosed = true;
