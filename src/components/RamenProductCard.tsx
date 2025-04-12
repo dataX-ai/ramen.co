@@ -42,7 +42,7 @@ const RamenProductCard: React.FC<RamenProductCardProps> = ({ onOrderNow }) => {
         protein: "50–55g",
       },
       images: [
-        "/images/ramen_og_circle.png",
+        "/images/ramen_og_circle.webp",
         "/images/chicken_ramen_2.jpg",
         "/images/chicken_ramen_3.jpg"
       ],
@@ -59,9 +59,9 @@ const RamenProductCard: React.FC<RamenProductCardProps> = ({ onOrderNow }) => {
         protein: "30–35g",
       },
       images: [
-        "/images/veg_ramen_circle.png",
+        "/images/veg_ramen_3.jpg",
         "/images/veg_ramen_2.jpg",
-        "/images/veg_ramen_3.jpg"
+        "/images/veg_ramen_circle.png"
       ],
       isVeg: true
     }
@@ -235,19 +235,7 @@ const RamenProductCard: React.FC<RamenProductCardProps> = ({ onOrderNow }) => {
     <Card className="bg-[#709b66] text-white p-6 rounded-3xl border-none shadow-lg flex flex-col h-full"
       style={{ boxShadow: '20px 30px 45px rgba(0, 0, 0, 0.35), -8px -10px 25px rgba(255, 255, 255, 0.15)' }}>
       <div className="flex flex-col md:flex-row md:justify-between items-center mb-6 gap-4">
-        <a 
-          href="https://www.linkedin.com/in/parth-r-8662ba111/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="transform hover:scale-105 transition-transform duration-300 w-full md:w-auto"
-        >
-          <Button 
-            className="bg-[rgba(213,122,131,255)] hover:bg-[rgba(112,155,102,0.9)] border-2 border-white rounded-full px-4 py-2 text-base md:px-6 md:py-3 md:text-lg shadow-[0_4px_12px_rgba(0,0,0,0.25)] hover:shadow-[0_6px_16px_rgba(0,0,0,0.35)] transition-all duration-300 flex items-center justify-center md:justify-start gap-2 w-full"
-          >
-            Meet the Ramen Guy
-            <ExternalLink className="w-4 h-4" />
-          </Button>
-        </a>
+        
         
         {/* Simple two-button toggle */}
         <div className="flex rounded-xl overflow-hidden border-2 border-white shadow-md w-full md:w-auto justify-center">
@@ -406,12 +394,12 @@ const RamenProductCard: React.FC<RamenProductCardProps> = ({ onOrderNow }) => {
               <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
                 <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-white/60 flex-shrink-0">
                   <img 
-                    src="/images/reddit-avatar.png" 
+                    src="/images/reddit-avatar.jpeg" 
                     alt="Reddit User" 
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png";
+                      target.src = "https://www.redditstatic.com/avatars/avatar_default_15_FF4500.png";
                     }}
                   />
                 </div>
