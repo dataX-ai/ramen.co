@@ -778,7 +778,7 @@ const OrderCard = () => {
                       className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                       onClick={() => handlePlaceSelect(result.place_id)}
                     >
-                      <p className="text-sm font-medium">{result.structured_formatting.main_text}</p>
+                      <p className="text-sm font-medium text-black">{result.structured_formatting.main_text}</p>
                       <p className="text-xs text-gray-500">{result.structured_formatting.secondary_text}</p>
                     </div>
                   ))}
